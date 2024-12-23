@@ -179,7 +179,24 @@ public:
         // Транспонирование диагональной матрицы дает ту же матрицу
         return new MatrixDiagonal<T>(*this);
     }
+    // Произведение Кронекера
+    Matrix<T>* kroneckerProduct(const Matrix<T>& other) const {
+        unsigned new_size = _size * other.rows();
+        MatrixDense<T>* result = new MatrixDense<T>(new_size, new_size);
 
+        for (unsigned i = 0; i < _size; ++i) {
+            for (unsigned j = 0; j < _size; ++j) {
+                for (unsigned k = 0; k < other.rows(); ++k) {
+                    for (unsigned l = 0; l < other.cols(); ++l) {
+                        (*result)(i * other.rows() + k, j * other.cols() + l) = 
+                            ((i == j) ? data[i] : 0) * other(k, l);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
     // Импорт из файла
     void importFromFile(const std::string& filename) override {
         std::ifstream infile(filename);
@@ -227,17 +244,18 @@ public:
     }
 
     // Метод для печати матрицы
-void print(std::ostream& os = std::cout) const override {
-    for (unsigned i = 0; i < _size; ++i) {
-        for (unsigned j = 0; j < _size; ++j) {
-            if (i == j)
-                os << data[i] << "\t";
-            else
-                os << "0\t";
+ void print(std::ostream& os = std::cout) const override {
+        for (unsigned i = 0; i < _size; ++i) {
+            for (unsigned j = 0; j < _size; ++j) {
+                if (i == j) {
+                    os << data[i] << "\t"; // Выводим элемент диагонали
+                } else {
+                    os << "0\t"; // Для всех остальных элементов выводим 0
+                }
+            }
+            os << "\n";
         }
-        os << "\n";
     }
-}
 };
 
 #endif 

@@ -201,24 +201,6 @@ public:
         return result;
     }
 
-    // Произведение Кронекера
-    MatrixDense<T>* kroneckerProduct(const MatrixDense<T>& other) const {
-        unsigned m = _m * other.rows();
-        unsigned n = _n * other.cols();
-        MatrixDense<T>* result = new MatrixDense<T>(m, n);
-
-        for (unsigned i = 0; i < _m; ++i) {
-            for (unsigned j = 0; j < _n; ++j) {
-                T a = (*this)(i, j);
-                for (unsigned p = 0; p < other.rows(); ++p) {
-                    for (unsigned q = 0; q < other.cols(); ++q) {
-                        result->operator()(i * other.rows() + p, j * other.cols() + q) = a * other(p, q);
-                    }
-                }
-            }
-        }
-        return result;
-    }
 
     // Импорт из файла
     void importFromFile(const std::string& filename) override {

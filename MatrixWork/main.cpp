@@ -1,23 +1,71 @@
-// main.cpp
-
 #include "MatrixDense.h"
 #include "MatrixDiagonal.h"
 #include "MatrixBlock.h"
 #include <iostream>
-#include <fstream>  
-#include <random>   
+#include <fstream>
+#include <random>
+#include <memory>
+
+// Шаблонная функция для выполнения операций над матрицами
+template <typename MatrixType>
+void performMatrixOperations(const MatrixType& A, const MatrixType& B, const std::string& filename) {
+    try {
+        std::ofstream outfile(filename);
+        if (!outfile) throw std::runtime_error("Не удалось открыть файл " + filename + " для записи.");
+
+        // Операции
+        auto C = A * B;
+        auto D = A.elemMult(B);
+        auto E = A.transpose();
+        auto G = A;
+        auto H = A;
+        G += B;
+        H -= B;
+
+        // Запись в файл
+        outfile << "Матрица A:\n";
+        A.print(outfile);
+        outfile << "\nМатрица B:\n";
+        B.print(outfile);
+        outfile << "\nМатрица C = A * B:\n";
+        C->print(outfile);
+        outfile << "\nМатрица D = A elemMult B:\n";
+        D->print(outfile);
+        outfile << "\nМатрица E = транспонированная(A):\n";
+        E->print(outfile);
+        outfile << "\nМатрица G = A + B:\n";
+        G.print(outfile);
+        outfile << "\nМатрица H = A - B:\n";
+        H.print(outfile);
+
+        // Произведение Кронекера только для диагональных матриц
+        if constexpr (std::is_same<MatrixType, MatrixDiagonal<int>>::value) {
+            std::cout << "Выполняется произведение Кронекера для диагональных матриц\n";
+            auto kron = A.kroneckerProduct(B);
+            outfile << "\nМатрица K = A ⊗ B (произведение Кронекера):\n";
+            kron->print(outfile);
+            delete kron; // Освобождение памяти
+        }
+
+        delete C;
+        delete D;
+        delete E;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Ошибка при работе с файлом " << filename << ": " << e.what() << std::endl;
+    }
+}
 
 int main() {
     try {
-        // Создаём генератор случайных чисел
+        // Генератор случайных чисел
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(-10, 10);  
-
+        std::uniform_int_distribution<> dis(-10, 10);
 
         std::cout << "=== MatrixDense ===\n";
 
-        // Создаем случайные плотные матрицы A и B размером 10x10 с целыми числами
+        // Создаем и экспортируем случайные плотные матрицы A и B
         MatrixDense<int> A(10, 10);
         MatrixDense<int> B(10, 10);
 
@@ -28,70 +76,26 @@ int main() {
             }
         }
 
-        // Операции
-        Matrix<int>* C_dense = A * B;
-        Matrix<int>* D_dense = A.elemMult(B);
-        Matrix<int>* E_dense = A.transpose();
-        Matrix<int>* F_dense = A.elemMult(B);  
+        A.exportToFile("MatrixDense_1.txt");
+        B.exportToFile("MatrixDense_2.txt");
+        std::cout << "Матрицы 1 и 2 экспортированы в файлы MatrixA.txt и MatrixB.txt.\n";
 
-        // Операции сложения и вычитания
-        MatrixDense<int> G_dense = A;
-        MatrixDense<int> H_dense = A;
-        G_dense += B;
-        H_dense -= B;
+        // Импортируем матрицы из файлов
+        MatrixDense<int> A_imported(10, 10);
+        MatrixDense<int> B_imported(10, 10);
 
-        // Произведение Кронекера
-        MatrixDense<int>* K_dense = A.kroneckerProduct(B);
+        A_imported.importFromFile("MatrixDense_1.txt");
+        B_imported.importFromFile("MatrixDense_2.txt");
+        std::cout << "Матрицы 1 и 2 импортированы из файлов.\n";
 
+        // Выполняем операции над импортированными матрицами
+        performMatrixOperations(A_imported, B_imported, "MatrixDenseOperations.txt");
 
-        std::ofstream outfile_dense("MatrixDense.txt");
-        if (!outfile_dense) {
-            throw std::runtime_error("Не удалось открыть файл MatrixDense.txt для записи.");
-        }
-
-        // Записываем матрицы и результаты операций в файл
-        outfile_dense << "Матрица A:\n";
-        A.print(outfile_dense);
-
-        outfile_dense << "\nМатрица B:\n";
-        B.print(outfile_dense);
-
-        outfile_dense << "\nМатрица C_dense = A * B:\n";
-        C_dense->print(outfile_dense);
-
-        outfile_dense << "\nМатрица D_dense = A почленное умножение B:\n";
-        D_dense->print(outfile_dense);
-
-        outfile_dense << "\nМатрица E_dense = транспонированная(A):\n";
-        E_dense->print(outfile_dense);
-
-        outfile_dense << "\nМатрица F_dense = A elemMult B (замена elemDiv для целых чисел):\n";
-        F_dense->print(outfile_dense);
-
-        outfile_dense << "\nМатрица G_dense = A + B:\n";
-        G_dense.print(outfile_dense);
-
-        outfile_dense << "\nМатрица H_dense = A - B:\n";
-        H_dense.print(outfile_dense);
-
-        outfile_dense << "\nМатрица K_dense = KroneckerProduct(A, B):\n";
-        K_dense->print(outfile_dense);
-
-        outfile_dense.close();
-
-        std::cout << "Сгенерированные матрицы и результаты операций для MatrixDense сохранены в файл MatrixDense.txt\n";
-
-        // Освобождаем память
-        delete C_dense;
-        delete D_dense;
-        delete E_dense;
-        delete F_dense;
-        delete K_dense;
-
+        std::cout << "Результаты операций для MatrixDense сохранены в файл MatrixDenseOperations.txt.\n";
 
         std::cout << "\n=== MatrixDiagonal ===\n";
 
-        // Создаем случайные диагональные матрицы D1 и D2 размером 10x10 с целыми числами
+        // Создаем случайные диагональные матрицы D1 и D2
         MatrixDiagonal<int> D1(10);
         MatrixDiagonal<int> D2(10);
 
@@ -100,69 +104,34 @@ int main() {
             D2(i, i) = dis(gen);
         }
 
-        // Операции
-        Matrix<int>* C_diag = D1 * D2;
-        Matrix<int>* D_diag = D1.elemMult(D2);
-        Matrix<int>* E_diag = D1.transpose();
-        Matrix<int>* F_diag = D1.elemMult(D2);  
+        D1.exportToFile("MatrixDiagonal_1.txt");
+        D2.exportToFile("MatrixDiagonal_2.txt");
+        std::cout << "Диагональные матрицы экспортированы в файлы MatrixDiagonal1.txt и MatrixDiagonal2.txt.\n";
 
-        // Операции сложения и вычитания
-        MatrixDiagonal<int> G_diag = D1;
-        MatrixDiagonal<int> H_diag = D1;
-        G_diag += D2;
-        H_diag -= D2;
+        // Импортируем диагональные матрицы
+        MatrixDiagonal<int> D1_imported(10);
+        MatrixDiagonal<int> D2_imported(10);
+        for (unsigned i = 0; i < D1.rows(); ++i) {
+                    D1(i, i) = dis(gen);
+                    D2(i, i) = dis(gen);
+                }
 
-   
-        std::ofstream outfile_diag("MatrixDiagonal.txt");
-        if (!outfile_diag) {
-            throw std::runtime_error("Не удалось открыть файл MatrixDiagonal.txt для записи.");
-        }
+        D1_imported.importFromFile("MatrixDiagonal_1.txt");
+        D2_imported.importFromFile("MatrixDiagonal_2.txt");
+        std::cout << "Диагональные матрицы импортированы из файлов.\n";
 
-        // Записываем матрицы и результаты операций в файл
-        outfile_diag << "Матрица D1:\n";
-        D1.print(outfile_diag);
+        // Выполняем операции над диагональными матрицами
+        performMatrixOperations(D1_imported, D2_imported, "MatrixDiagonalOperations.txt");
 
-        outfile_diag << "\nМатрица D2:\n";
-        D2.print(outfile_diag);
+        std::cout << "Результаты операций для MatrixDiagonal сохранены в файл MatrixDiagonalOperations.txt.\n";
 
-        outfile_diag << "\nМатрица C_diag = D1 * D2:\n";
-        C_diag->print(outfile_diag);
+  std::cout << "\n=== MatrixBlock ===\n";
 
-        outfile_diag << "\nМатрица D_diag = D1 почленное умножение D2:\n";
-        D_diag->print(outfile_diag);
-
-        outfile_diag << "\nМатрица E_diag = транспонированная(D1):\n";
-        E_diag->print(outfile_diag);
-
-        outfile_diag << "\nМатрица F_diag = D1 elemMult D2 (замена elemDiv для целых чисел):\n";
-        F_diag->print(outfile_diag);
-
-        outfile_diag << "\nМатрица G_diag = D1 + D2:\n";
-        G_diag.print(outfile_diag);
-
-        outfile_diag << "\nМатрица H_diag = D1 - D2:\n";
-        H_diag.print(outfile_diag);
-
-        outfile_diag.close();
-
-        std::cout << "Сгенерированные матрицы и результаты операций для MatrixDiagonal сохранены в файл MatrixDiagonal.txt\n";
-
-        // Освобождаем память
-        delete C_diag;
-        delete D_diag;
-        delete E_diag;
-        delete F_diag;
-
-
-        std::cout << "\n=== MatrixBlock ===\n";
-
-        // Создаем блоковую матрицу размером 10x10 с блоками 2x2
-        MatrixBlock<int> B1(5, 5, 2, 2);  // 5x5 блоков, каждый размером 2x2
-
-        // Заполняем блоки случайными числами
+// Создаем первую блоковую матрицу размером 10x10 с блоками 2x2
+        MatrixBlock<int> B1(5, 5, 2, 2); // 5x5 блоков, каждый размером 2x2
         for (unsigned i = 0; i < 5; ++i) {
             for (unsigned j = 0; j < 5; ++j) {
-                std::shared_ptr<MatrixDense<int>> block = std::make_shared<MatrixDense<int>>(2, 2);
+                auto block = std::make_shared<MatrixDense<int>>(2, 2);
                 for (unsigned m = 0; m < 2; ++m) {
                     for (unsigned n = 0; n < 2; ++n) {
                         block->operator()(m, n) = dis(gen);
@@ -172,60 +141,37 @@ int main() {
             }
         }
 
-
-        MatrixBlock<int> B2 = B1;
-
-        // Операции
-        Matrix<int>* C_block = B1 * B2;
-        Matrix<int>* D_block = B1.elemMult(B2);
-        Matrix<int>* E_block = B1.transpose();
-        Matrix<int>* F_block = B1.elemMult(B2);  
-
-        // Операции сложения и вычитания
-        MatrixBlock<int> G_block = B1;
-        MatrixBlock<int> H_block = B1;
-        G_block += B2;
-        H_block -= B2;
-
-        std::ofstream outfile_block("MatrixBlock.txt");
-        if (!outfile_block) {
-            throw std::runtime_error("Не удалось открыть файл MatrixBlock.txt для записи.");
+        // Создаем вторую блоковую матрицу размером 10x10 с блоками 2x2
+        MatrixBlock<int> B2(5, 5, 2, 2); // 5x5 блоков, каждый размером 2x2
+        for (unsigned i = 0; i < 5; ++i) {
+            for (unsigned j = 0; j < 5; ++j) {
+                auto block = std::make_shared<MatrixDense<int>>(2, 2);
+                for (unsigned m = 0; m < 2; ++m) {
+                    for (unsigned n = 0; n < 2; ++n) {
+                        block->operator()(m, n) = dis(gen);
+                    }
+                }
+                B2.setBlock(i, j, block);
+            }
         }
 
-        // Записываем матрицы и результаты операций в файл
-        outfile_block << "Матрица B1:\n";
-        B1.print(outfile_block);
+        // Экспортируем обе блоковые матрицы
+        B1.exportToFile("MatrixBlock_1.txt");
+        B2.exportToFile("MatrixBlock_2.txt");
+        std::cout << "Блоковые матрицы экспортированы в файлы MatrixBlock1.txt и MatrixBlock2.txt.\n";
 
-        outfile_block << "\nМатрица B2:\n";
-        B2.print(outfile_block);
+        // Импортируем блоковые матрицы
+        MatrixBlock<int> B1_imported(5, 5, 2, 2);
+        MatrixBlock<int> B2_imported(5, 5, 2, 2);
 
-        outfile_block << "\nМатрица C_block = B1 * B2:\n";
-        C_block->print(outfile_block);
+        B1_imported.importFromFile("MatrixBlock_1.txt");
+        B2_imported.importFromFile("MatrixBlock_2.txt");
+        std::cout << "Блоковые матрицы импортированы из файлов.\n";
 
-        outfile_block << "\nМатрица D_block = B1 почленное умножение B2:\n";
-        D_block->print(outfile_block);
+        // Выполняем операции над импортированными блоковыми матрицами
+        performMatrixOperations(B1_imported, B2_imported, "MatrixBlockOperations.txt");
 
-        outfile_block << "\nМатрица E_block = транспонированная(B1):\n";
-        E_block->print(outfile_block);
-
-        outfile_block << "\nМатрица F_block = B1 elemMult B2 (замена elemDiv для целых чисел):\n";
-        F_block->print(outfile_block);
-
-        outfile_block << "\nМатрица G_block = B1 + B2:\n";
-        G_block.print(outfile_block);
-
-        outfile_block << "\nМатрица H_block = B1 - B2:\n";
-        H_block.print(outfile_block);
-
-        outfile_block.close();
-
-        std::cout << "Сгенерированные матрицы и результаты операций для MatrixBlock сохранены в файл MatrixBlock.txt\n";
-
-        // Освобождаем память
-        delete C_block;
-        delete D_block;
-        delete E_block;
-        delete F_block;
+        std::cout << "Результаты операций для MatrixBlock сохранены в файл MatrixBlockOperations.txt.\n";
 
     } catch (const std::exception& e) {
         std::cerr << "Ошибка: " << e.what() << std::endl;
